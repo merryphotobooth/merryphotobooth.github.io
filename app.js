@@ -298,6 +298,36 @@
 
   /* ---------------- photo processing ---------------- */
   const photoCache = new Map();
+
+  // B&W = a 1960s European booth print (silver gelatin on warm fibre paper):
+  // S-curve with lifted blacks and a soft shoulder, creamy highlights,
+  // clumped silver grain, a faint highlight glow and burned-in edges.
+  const BW_LUT = (() => {
+    const lut = new Float32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let t = i / 255;
+      t += (t * t * (3 - 2 * t) - t) * 0.7;
+      lut[i] = 18 + t * 220; // ink black ~18, paper white ~238
+    }
+    return lut;
+  })();
+  function finishBW(c, x) {
+    if (typeof x.filter === 'string') { // soft halation around highlights
+      const b = mk(PW, PH), bx = b.getContext('2d');
+      bx.filter = 'blur(12px)';
+      bx.drawImage(c, 0, 0);
+      x.globalCompositeOperation = 'screen'; x.globalAlpha = 0.14;
+      x.drawImage(b, 0, 0);
+      x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+    }
+    const e = PW * 0.04; // edge burn from the booth's print mask
+    [[0, 0, e, 0], [PW, 0, PW - e, 0], [0, 0, 0, e], [0, PH, 0, PH - e]].forEach(([x0, y0, x1, y1]) => {
+      const g = x.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, 'rgba(14,10,8,.55)'); g.addColorStop(1, 'rgba(14,10,8,0)');
+      x.fillStyle = g; x.fillRect(0, 0, PW, PH);
+    });
+  }
+
   function processPhoto(i, filter) {
     const key = `${i}|${filter}`;
     if (photoCache.has(key)) return photoCache.get(key);
@@ -305,12 +335,36 @@
     x.drawImage(shots[i], 0, 0);
     const img = x.getImageData(0, 0, PW, PH), d = img.data;
     const r = rng(500 + i * 17);
+    const bw = filter === 'bw';
+    let clump = null, CW = 0, lo = 0, span = 255;
+    if (bw) {
+      // half-res noise field so the grain clumps like silver, not digital noise
+      CW = Math.ceil(PW / 2);
+      clump = new Float32Array(CW * Math.ceil(PH / 2));
+      for (let k = 0; k < clump.length; k++) clump[k] = r() - 0.5;
+      // auto-levels: webcams shoot flat, a print has real blacks and whites
+      const hist = new Uint32Array(256);
+      for (let p = 0; p < d.length; p += 16) hist[(0.42 * d[p] + 0.46 * d[p + 1] + 0.12 * d[p + 2]) | 0]++;
+      const total = d.length / 16;
+      let acc = 0, hi = 255;
+      for (let k = 0; k < 256; k++) { acc += hist[k]; if (acc > total * 0.006) { lo = k; break; } }
+      acc = 0;
+      for (let k = 255; k >= 0; k--) { acc += hist[k]; if (acc > total * 0.004) { hi = k; break; } }
+      lo = Math.min(lo, 60); hi = Math.max(hi, 190); // never stretch a dim scene into noise
+      span = Math.max(120, hi - lo);
+    }
     for (let p = 0; p < d.length; p += 4) {
       let R = d[p], G = d[p + 1], B = d[p + 2];
       const L = 0.299 * R + 0.587 * G + 0.114 * B;
-      if (filter === 'bw') {
-        const v = (L - 128) * 1.22 + 132;
-        R = v; G = v * 0.995; B = v * 0.98; // a hint of warm silver
+      if (bw) {
+        // warm-filtered panchromatic mix: smooth skin, deep darks
+        const m = ((0.42 * R + 0.46 * G + 0.12 * B) - lo) * 255 / span;
+        const v = BW_LUT[Math.min(255, Math.max(0, Math.round(m)))];
+        const t = v / 255, q = p >> 2;
+        const mid = 0.55 + 0.45 * (1 - Math.abs(2 * t - 1)); // grain shows most in the mids
+        const n = ((r() - 0.5) * 0.6 + clump[((q / PW / 2) | 0) * CW + (((q % PW) / 2) | 0)]) * 24 * mid;
+        d[p] = v + 4 * t + n; d[p + 1] = v - 1 + n; d[p + 2] = v - 3 - 6 * t + n; // cream paper tone
+        continue;
       } else if (filter === 'sepia') {
         const v = (L - 128) * 1.1 + 128;
         R = v * 1.07 + 18; G = v * 0.9 + 12; B = v * 0.68 + 6;
@@ -323,8 +377,9 @@
     }
     x.putImageData(img, 0, 0);
     const v = x.createRadialGradient(PW / 2, PH / 2, PH * 0.38, PW / 2, PH / 2, PW * 0.7);
-    v.addColorStop(0, 'rgba(10,5,4,0)'); v.addColorStop(1, 'rgba(10,5,4,.5)');
+    v.addColorStop(0, 'rgba(10,5,4,0)'); v.addColorStop(1, `rgba(10,5,4,${bw ? 0.3 : 0.5})`);
     x.fillStyle = v; x.fillRect(0, 0, PW, PH);
+    if (bw) finishBW(c, x);
     photoCache.set(key, c);
     return c;
   }
