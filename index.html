@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3F0F12">
+  <title>Merry Photo Booth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div class="flash" id="flash" aria-hidden="true"></div>
+
+    <!-- 1. WELCOME -->
+    <section id="screen-start" class="screen active" aria-label="Welcome">
+      <div class="marquee">
+        <div class="marquee-sign"><h1 class="script">Merry Photo Booth</h1></div>
+      </div>
+
+      <div class="opening" id="opening">
+        <div class="interior" aria-hidden="true">
+          <div class="interior-glow"></div>
+          <div class="bench"></div>
+        </div>
+        <div class="rod" aria-hidden="true"></div>
+        <div class="curtain left" aria-hidden="true"></div>
+        <div class="curtain right" aria-hidden="true"></div>
+        <button class="plaque plaque-btn" id="btn-start" type="button">
+          <span class="plaque-label">Step Inside</span>
+          <svg class="arrow" viewBox="0 0 24 28" aria-hidden="true"><path d="M8 0h8v14h7L12 28 1 14h7z"/></svg>
+        </button>
+      </div>
+
+      <p class="footnote">Photos stay on your device</p>
+    </section>
+
+    <!-- 2. SHOOT -->
+    <section id="screen-shoot" class="screen" aria-label="Photo booth">
+      <header class="topbar">
+        <button class="text-btn" id="btn-leave" type="button">‹ Leave</button>
+        <span class="label" id="shot-label" aria-live="polite">Pose 1 of 4</span>
+        <span class="topbar-spacer"></span>
+      </header>
+
+      <div class="booth-frame">
+        <div class="lens" aria-hidden="true"><span id="lens-light"></span></div>
+        <div class="viewport">
+          <video id="video" playsinline muted autoplay></video>
+          <canvas id="demo-canvas" width="640" height="512" hidden></canvas>
+          <div class="grain" aria-hidden="true"></div>
+          <div class="countdown" id="countdown" aria-live="assertive"></div>
+          <div class="pose" id="pose" aria-live="polite"></div>
+          <div class="camera-error" id="camera-error" hidden>
+            <p id="error-msg">We couldn't open the camera.</p>
+            <button id="btn-retry" class="btn btn-cream" type="button">Try Again</button>
+            <button id="btn-demo" class="text-btn" type="button">Use a demo instead</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="cue" id="cue" aria-live="polite"></p>
+
+      <ol class="progress" id="progress" aria-label="Shots taken">
+        <li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li>
+      </ol>
+      <p class="hint">Look into the lens</p>
+    </section>
+
+    <!-- 3. DELIVERY -->
+    <section id="screen-delivery" class="screen wall" aria-label="Your photos">
+      <div class="plaque plaque-sign">
+        <span class="plaque-title">Photos</span>
+        <span class="plaque-sub">Delivered here</span>
+        <svg class="arrow" viewBox="0 0 24 28" aria-hidden="true"><path d="M8 0h8v14h7L12 28 1 14h7z"/></svg>
+      </div>
+      <div class="tray">
+        <div class="tray-inner">
+          <div class="slit" aria-hidden="true"></div>
+          <div class="tray-window" id="tray-window">
+            <div class="mover" id="mover">
+              <canvas class="delivery-strip" role="img" aria-label="Film strip 1, poses 1 to 4"></canvas>
+              <canvas class="delivery-strip" role="img" aria-label="Film strip 2, poses 5 to 8"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="delivery-actions reveal" id="delivery-actions">
+        <button class="btn btn-cream" id="btn-customize" type="button">Make it yours</button>
+        <button class="text-btn" id="btn-retake-1" type="button">↺ Retake</button>
+      </div>
+    </section>
+
+    <!-- 4–5. CUSTOMIZE + SHARE -->
+    <section id="screen-custom" class="screen" aria-label="Customize your strip">
+      <header class="topbar">
+        <button class="text-btn" id="btn-retake-2" type="button">↺ Retake</button>
+        <span class="label">Make it yours</span>
+        <button class="text-btn" id="btn-restart" type="button">Start over</button>
+      </header>
+
+      <div class="preview-area" id="preview-area">
+        <canvas id="preview" role="img" aria-label="Live preview"></canvas>
+      </div>
+
+      <div class="sheet">
+        <div class="tabs" role="tablist">
+          <button role="tab" type="button" id="t-frame" aria-controls="p-frame" aria-selected="true">Frame</button>
+          <button role="tab" type="button" id="t-filter" aria-controls="p-filter" aria-selected="false">Filter</button>
+          <button role="tab" type="button" id="t-details" aria-controls="p-details" aria-selected="false">Details</button>
+        </div>
+
+        <div class="tabpanel" id="p-frame" role="tabpanel" aria-labelledby="t-frame">
+          <div class="cards cols-5" role="radiogroup" aria-label="Frame" data-group="frame">
+            <button class="card" type="button" role="radio" data-value="black"><canvas class="mini-strip"></canvas><span>Black</span></button>
+            <button class="card" type="button" role="radio" data-value="red"><canvas class="mini-strip"></canvas><span>Red</span></button>
+            <button class="card" type="button" role="radio" data-value="green"><canvas class="mini-strip"></canvas><span>Green</span></button>
+            <button class="card" type="button" role="radio" data-value="water"><canvas class="mini-strip"></canvas><span>Paint</span></button>
+            <button class="card" type="button" role="radio" data-value="arch"><canvas class="mini-strip"></canvas><span>Arch</span></button>
+          </div>
+        </div>
+
+        <div class="tabpanel" id="p-filter" role="tabpanel" aria-labelledby="t-filter" hidden>
+          <div class="cards cols-3" role="radiogroup" aria-label="Filter" data-group="filter">
+            <button class="card" type="button" role="radio" data-value="bw"><canvas class="mini-photo"></canvas><span>B&amp;W</span></button>
+            <button class="card" type="button" role="radio" data-value="sepia"><canvas class="mini-photo"></canvas><span>Sepia</span></button>
+            <button class="card" type="button" role="radio" data-value="faded"><canvas class="mini-photo"></canvas><span>Faded</span></button>
+          </div>
+        </div>
+
+        <div class="tabpanel" id="p-details" role="tabpanel" aria-labelledby="t-details" hidden>
+          <label class="field">
+            <span>Caption</span>
+            <input id="caption" type="text" maxlength="30" autocomplete="off" enterkeyhint="done" placeholder="Love from the Miller Family">
+          </label>
+          <div class="chips">
+            <button class="chip" type="button" id="toggle-stars" aria-pressed="false">★ Stars</button>
+            <button class="chip" type="button" id="toggle-date" aria-pressed="true">12.25.2026</button>
+          </div>
+        </div>
+
+        <div class="seg" role="radiogroup" aria-label="Export format" data-group="format">
+          <button type="button" role="radio" data-value="strip" aria-checked="true">Strip</button>
+          <button type="button" role="radio" data-value="story" aria-checked="false">Story 9:16</button>
+        </div>
+
+        <div class="share-row">
+          <button class="btn btn-cherry" id="btn-save" type="button">Save</button>
+          <button class="btn btn-oxblood" id="btn-share" type="button">Share</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
